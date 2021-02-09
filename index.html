@@ -85,14 +85,12 @@ synthetic images.The engineer now has far greater control over the data, which
 can enable rapid iteration on model errors and customizability. 
 </p>
 
-<p>
 <figure class="figure">
 <img src="media/post1-image0.jpg" class="img-fluid rounded w-75 mx-auto d-block" alt="our home robot">
 <figcaption class="figure-caption text-center">
 Our home robot performing complex tasks in unstructured environments.
 </figcaption>
 </figure>
-</p>
 
 <p>
 While the promise of synthetic data is enticing, the difficulty is designing a
@@ -144,7 +142,6 @@ and natural sunlight. In the home robotic setting, these situations are far too
 common for the sensor to be reliable. 
 </p>
 
-<p>
 <figure class="figure">
 <img src="media/post1-image1.gif" class="figure-img img-fluid rounded w-75 mx-auto d-block" alt="example images">
 <figcaption class="figure-caption">
@@ -155,7 +152,6 @@ places cars in natural-like configurations, which enables “high-level” visio
 tasks, like detection, to transfer. 
 </figcaption>
 </figure>
-</p>
 
 <p>
 An alternative to active sensors, is to use a stereo pair of images to derive
@@ -203,7 +199,6 @@ with OpenGL shaders. Leveraging $60 of cloud computing, we can generate a
 dataset of 50K examples in an hour. 
 </p>
 
-<p>
 <figure class="figure">
 <img src="media/post1-image2.png" class="figure-img img-fluid rounded w-75 mx-auto d-block" alt="network diagram">
 <figcaption class="figure-caption">
@@ -213,8 +208,6 @@ cost volume and a disparity image is computed. The geometry is then fused with
 the left RGB image and fed into the backbone of the detection network.
 </figcaption>
 </figure>
-</p>
-
 
 <p>
 To learn stereo matching, we train a network heavily inspired by DispNet-Corr
@@ -259,7 +252,6 @@ learned stereo that were trained solely on the rendered images from our
 simulator. 
 </p>
 
-<p>
 <figure class="figure">
 <img src="media/post1-image3.gif" class="figure-img img-fluid rounded w-75 mx-auto d-block" alt="kitti detections">
 <figcaption class="figure-caption">
@@ -270,7 +262,6 @@ detector uses these geometric features to predict 2D bounding boxes on cars in
 the real world. 
 </figcaption>
 </figure>
-</p>
 
 
 <h2>
@@ -287,7 +278,6 @@ The robot can achieve this by segmenting out the wipeable surface and detecting
 our robot reasoning about this information in a kitchen.
 </p>
 
-<p>
 <figure class="figure">
 <img src="media/post1-image4.jpg" class="figure-img img-fluid rounded w-75 mx-auto d-block" alt="robot in home">
 <figcaption class="figure-caption">
@@ -297,7 +287,6 @@ given the 3D oriented bounding boxes. The perception for this task was trained
 with programmable data. 
 </figcaption>
 </figure>
-</p>
 
 <p>
 Manual annotation of pixel-level segmentation and 3D bounding boxes would be a
@@ -309,7 +298,6 @@ the table in random poses. Shown below are rendered images from different
 camera viewpoints.
 </p>
 
-<p>
 <figure class="figure">
 <img src="media/post1-image5.gif" class="figure-img img-fluid rounded w-75 mx-auto d-block" alt="example renders">
 <figcaption class="figure-caption">
@@ -318,7 +306,6 @@ them  Like the in the car example, the simulator is low quality and procedural,
 which makes it trivial to program and reconfigure. 
 </figcaption>
 </figure>
-</p>
 
 <p>
 Given this data, we train a network to jointly learn the predictions of both,
@@ -344,7 +331,6 @@ below are three scenes from our validation data with the predictions being
 shown. 
 </p>
 
-<p>
 <figure class="figure">
 <img src="media/post1-image6.gif" class="figure-img img-fluid rounded w-75 mx-auto d-block" alt="validation images">
 <figcaption class="figure-caption">
@@ -356,7 +342,6 @@ object. Despite only being trained on low quality synthetic data, we are able
 to achieve robust transfer in a variety of home scenes. 
 </figcaption>
 </figure>
-</p>
 
 <h2>
 Current Limitations of Programmable Data
@@ -440,7 +425,7 @@ Xie, Christopher, et al. "The best of both modes: Separately leveraging rgb and 
 <li>
 Bajracharya, Max, et al. "A mobile manipulation system for one-shot teaching of complex tasks in homes." 2020 IEEE International Conference on Robotics and Automation (ICRA). IEEE, 2020.
 </li>
-<ol>
+</ol>
 </div>
 
 </div>
