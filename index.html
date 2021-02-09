@@ -1,0 +1,457 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta1/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-giJF6kkoqNQ00vy+HMDP7azOuL0xtbfIcaT9wjKHr8RbDVddVHyTfAAsrekwKmP1" crossorigin="anonymous">
+<link rel="icon" type="image/png" sizes="32x32" href="/media/favicon-32x32.png"/>
+<link rel="icon" type="image/png" sizes="16x16" href="/media/favicon-16x16.png"/>
+<title>TRI - SimNet</title>
+<style>
+ .custom-footer {
+  padding: 2.5rem 0;
+  color: #727272;
+  text-align: center;
+  background-color: #f9f9f9;
+  border-top: .05rem solid #e5e5e5;
+}
+.custom-footer p:last-child {
+  margin-bottom: 0;
+}
+</style>
+</head>
+
+<body>
+
+<nav class="navbar sticky-top navbar-dark bg-dark">
+<div class="container">
+<a class="navbar-brand" href="https://tri.global/">
+<img src="media/tri-logo.png" alt="" height="50">
+</a>
+</div>
+</nav>
+
+<img src="media/post1-header.jpg" class="w-100" alt="header image of robot in home">
+
+<main class="container">
+<div class="row">
+<div class="col-md-8 offset-md-2">
+
+
+<!-- Title -->
+<h1 class="display-3">
+Teaching Robots To See with Programmable Data
+</h1>
+
+<p class="lead">
+At <a href="https://tri.global/">Toyota Research Institute</a>, our goal is
+to make breakthrough capabilities in Artificial Intelligence (AI). Projects
+range from self-driving cars to home robotics. Despite recent advancements in
+AI, the large amount of data collection needed to deploy systems in
+unstructured environments continues to be a burden.
+</p>
+
+<p>
+Data collection in computer vision can be both quite costly and time consuming,
+largely due to the process of annotating. Annotating data is typically done by
+a team of labelers, who are given a long list of rules for how to handle
+different scenarios.  For complex systems like a home robot or a self-driving
+car,  it's very unlikely that the annotations required are well understood a
+priori and need to be constantly refined.  This creates an expensive feedback
+loop. 
+</p>
+
+<p>
+For example, our home robot, discussed later in the blog, was tasked with
+identifying objects on a table.  The initial data we trained the system on
+consisted solely of images of tables with clutter on top.  At runtime the robot
+had significant error when shown empty tables and required more data to be
+collected. If we relied on real-world data to fix our problem, an individual
+would have to go into homes, capture images of tables, and then annotate them,
+which could take days.  
+
+</p>
+
+
+<p>
+A promising alternative is the use of synthetic data, or simulation to produce
+ground truth annotations. With synthetic data a computer simulates a 3D world,
+similar to a video game, and then renders the image and desired labels from the
+scene. Synthetic data has the potential to help, <em>since data can now be
+considered programmable</em>. With programmable data, an engineer could address
+unforeseen and unrepresented environments in data--in our example, tables
+without clutter objects--by writing a patch to the code that sampled the
+synthetic images.The engineer now has far greater control over the data, which
+can enable rapid iteration on model errors and customizability. 
+</p>
+
+<p>
+<figure class="figure">
+<img src="media/post1-image0.jpg" class="img-fluid rounded w-75 mx-auto d-block" alt="our home robot">
+<figcaption class="figure-caption text-center">
+Our home robot performing complex tasks in unstructured environments.
+</figcaption>
+</figure>
+</p>
+
+<p>
+While the promise of synthetic data is enticing, the difficulty is designing a
+simulator that is easily programmable and that can transfer from simulation to
+reality. Current photo-realistic approaches to simulator design require artist
+curated mesh assets and scene placement to recreate the physical world, which
+is quite laborious. Inspired by techniques in domain randomization [1,9], where
+textures, lighting, and scene placement are all algorithmically generated, we
+have been exploring how to create a procedural simulator that can be easily
+adapted to new domains, such as indoor scenes and self-driving. 
+</p>
+
+<p>
+Our key insight is that by forcing a deep network to explicitly reason about
+geometry from <em>stereo images</em>, we can dramatically reduce the complexity of
+simulation and still achieve robust transfer in unstructured domains. In this
+blog post, we show how using ideas from the learned stereo community, we can
+train a model on low quality synthetic data and obtain results at parity with
+real-world data on the KITTI car detection benchmark.  We then describe how the
+same simulator is used on our robotic fleet to enable a home robot to reason
+about unknown objects and wipe surfaces. 
+</p>
+
+
+<h2>
+Transferring from Simulation with Stereo Cameras
+</h2>
+
+<p>
+To transfer from simulation to real, the network needs to be able to reason
+about the world in a way that is invariant between the two domains.  One
+promising technique used to make transferrable data is to use geometric
+features, such as a depth image or a point cloud [3,10].  In this approach a
+network is trained on a synthetic geometric representation and then at run time
+a sensor is used to extract 3D geometry of the environment. The intuition is
+that geometry is consistent between the real world and simulation, so features
+learned in simulation should be invariant. 
+</p>
+
+<p>
+Currently, the common way to extract geometry from real world environments is
+utilizing either LIDAR or structured light sensors. These are both active
+sensors, which project light to infer depth. While these sensors can produce
+great results, they have several significant limitations. LIDAR is typically a
+very expensive solution that makes it impractical for a lot of applications.
+While structure light sensors are lower in cost, they have trouble with objects
+that disrupt infrared light, such as black objects, glassware, stainless steel
+and natural sunlight. In the home robotic setting, these situations are far too
+common for the sensor to be reliable. 
+</p>
+
+<p>
+<figure class="figure">
+<img src="media/post1-image1.gif" class="figure-img img-fluid rounded w-75 mx-auto d-block" alt="example images">
+<figcaption class="figure-caption">
+Example images from our procedural simulator, which are used for training a 2D
+car detector.  The data is abstract and low quality, which is consistent with
+training data used for learned stereo networks [9]. However, the scene layout
+places cars in natural-like configurations, which enables “high-level” vision
+tasks, like detection, to transfer. 
+</figcaption>
+</figure>
+</p>
+
+<p>
+An alternative to active sensors, is to use a stereo pair of images to derive
+the geometry of a scene. Stereo images are created with a pair of two cameras
+that are positioned horizontally from each other by a fixed distance, or
+<em>baseline</em>. The most common stereo pair is human eyes. Stereo cameras infer
+distance to a target point, by understanding the relative distance between
+where the point is projected on the two images. The relative distance is
+commonly referred to as disparity, which is proportional to absolute distance
+from the camera .
+</p>
+
+<p>
+While understanding where a point in one image is on the adjacent image seems
+easy, it can actually be quite challenging for a computer--especially when
+encountering large texture-less surfaces like a white walls or stainless steel
+appliances. Classical techniques to solve this problem have suffered from not
+having the correct feature space to address these challenges. Thus, there has
+been a recent surge in research in leveraging deep networks to learn better
+features for stereo matching. 
+</p>
+
+<p>
+Recently, a surprising result [9] came out about the quality of data needed to
+train stereo networks . The authors showed that since stereo matching is a
+“low-level” vision task, the datasets can be completely divorced from reality
+and low-quality. The intuition for the result is that features for stereo
+matching can be trained in a generic way that doesn’t require understanding the
+semantics of the world.  Given this new technique to extract dense geometric
+features, we wondered if it can replace the need for depth sensors for
+transferring “high-level” vision?  To test this, we designed a simulator for
+car detection that used the procedural randomization methods from [9], but had
+a scene layout to coarsely mimic the real world.
+</p>
+
+
+
+<p>
+While the simulator might seem chaotic, the underlying algorithm is quite
+simple. First, cars are placed in natural-like positions on a flat plane. Then,
+random objects from the ShapeNet [6] are sampled in the free space and scaled
+to building size. The lighting, texture and camera noise are implemented by the
+procedural algorithms listed in [9].  The simulator is implemented in python
+with OpenGL shaders. Leveraging $60 of cloud computing, we can generate a
+dataset of 50K examples in an hour. 
+</p>
+
+<p>
+<figure class="figure">
+<img src="media/post1-image2.png" class="figure-img img-fluid rounded w-75 mx-auto d-block" alt="network diagram">
+<figcaption class="figure-caption">
+A rough sketch of how stereo can be fed into a single-shot detector. Features
+are computed on the left and right image. The features are then matched in the
+cost volume and a disparity image is computed. The geometry is then fused with
+the left RGB image and fed into the backbone of the detection network.
+</figcaption>
+</figure>
+</p>
+
+
+<p>
+To learn stereo matching, we train a network heavily inspired by DispNet-Corr
+[4] on the generated data. DispNet-Corr is a simple stereo algorithm that
+relies only on 2D convolutions , which makes it ideal for real time
+applications. DispNet-Corr works by having a feature extractor with shared
+weights run on both the left and right image. Pixel-wise features are then
+computed for each image and a cost volume is calculated, which stores the
+correlation of each pixel to one another. This can actually be done
+efficiently, since we only need to consider matches along the “scan-line” or
+horizontal row of the image. The features with the highest correlation are
+considered a match and that determines the pixel displacement, or disparity. 
+</p>
+
+<p>
+Given the disparity map generated from the stereo network, we concatenate it
+with the left RGB image and feed it as input into the network. Empirically, we
+have found that adding the left image in an early fusion step with the
+disparity map improves performance. A similar result was seen in the case with
+structured light sensors[10]. We hypothesize this enables robustness to the
+errors from the learned stereo network and can also offer coarse texture
+information. A high level architecture of this network can be seen below for
+the 2D car detection task. We have empirically found the network can be trained
+end-to-end or have frozen stereo weights with little performance difference. 
+</p>
+
+
+
+<p>
+To test if using stereo matching enables reliable transfer for high level
+vision, we evaluate it on the KITTI benchmark [7] with the task of 2D car
+detection.  For inference, we train a single shot detector that is inspired by
+CenterNet[2]. If we train the network on real KITTI data and test it, we can
+achieve 86 mAP@0.5 on the aggregate Easy+Moderate class which is comparable to
+the published CenterNet numbers. If we train the same network while feeding in
+our stereo predictions with 50K examples from our simulated data it achieves 83
+mAP, or a 4% difference. However,  the network achieves only 68 mAP when
+trained on only monocular images from the simulator. These results are
+preliminary, but suggest a simple stereo algorithm can enable robust transfer
+from simulation. Below are qualitative results of both the predictions and the
+learned stereo that were trained solely on the rendered images from our
+simulator. 
+</p>
+
+<p>
+<figure class="figure">
+<img src="media/post1-image3.gif" class="figure-img img-fluid rounded w-75 mx-auto d-block" alt="kitti detections">
+<figcaption class="figure-caption">
+The detections on KITTI from the network trained in our simulator. In the top
+right, the stereo predictions are being visualized, despite being trained only
+on procedural data it can compute dense geometric features of the scene.  Our
+detector uses these geometric features to predict 2D bounding boxes on cars in
+the real world. 
+</figcaption>
+</figure>
+</p>
+
+
+<h2>
+Programmable Data Applied to Home Robotics
+</h2>
+
+<p>
+To better illustrate the capability of programmable data, we integrated it into
+our home robotic fleet [11]. One common task in the home is wiping surfaces
+clean. In order for a robot to perform this task, it needs to identify the
+surface that should be wiped and the size of all objects that should be moved.
+The robot can achieve this by segmenting out the wipeable surface and detecting
+3D oriented bounding boxes of the objects on it. Shown below is an example of
+our robot reasoning about this information in a kitchen.
+</p>
+
+<p>
+<figure class="figure">
+<img src="media/post1-image4.jpg" class="figure-img img-fluid rounded w-75 mx-auto d-block" alt="robot in home">
+<figcaption class="figure-caption">
+Our  home robot in the kitchen.  The robot is reasoning about where the
+wipeable surface is to clean (top right image)  and how to grasp the objects
+given the 3D oriented bounding boxes. The perception for this task was trained
+with programmable data. 
+</figcaption>
+</figure>
+</p>
+
+<p>
+Manual annotation of pixel-level segmentation and 3D bounding boxes would be a
+challenging task for human annotators. Programmable data though offers a
+relatively straightforward solution to this problem. Using our procedural
+simulator, we created a scene layout with a table sampled in the middle of the
+room and random appliances placed around the object. We then sample objects on
+the table in random poses. Shown below are rendered images from different
+camera viewpoints.
+</p>
+
+<p>
+<figure class="figure">
+<img src="media/post1-image5.gif" class="figure-img img-fluid rounded w-75 mx-auto d-block" alt="example renders">
+<figcaption class="figure-caption">
+Example renders of our simulator for wipeable surfaces with objects placed on
+them  Like the in the car example, the simulator is low quality and procedural,
+which makes it trivial to program and reconfigure. 
+</figcaption>
+</figure>
+</p>
+
+<p>
+Given this data, we train a network to jointly learn the predictions of both,
+the oriented bounding boxes and segmentation of the wipeable surface. The
+architecture of this network is heavily inspired by Mobile-Pose [5], however we
+added our stereo prior discussed in the previous section. Additionally in
+MobilePose, the network predicts absolute object pose. Since we are interested
+in oriented bounding boxes, we regress the elements of the covariance matrix
+computed from mesh vertices.  We train the network on 50k synthetic images,
+which can be generated in an hour from our simulator.
+</p>
+
+<p>
+To test how robust the perception can be in unstructured environments, we
+curated an internal validation dataset of 30 reconstructed scenes with labeled
+3D bounding boxes of each object on the table, using a similar annotation
+method in [5]. On this dataset we can achieve 89.1 mAP@0.25 with a 3D IOU,
+using the stereo network. If we swap the network with an off-the-shelf
+structured light sensor. Then retrain the model with synthetic depth plus added
+noise. The performance drops to 67.2 mAP. Thus suggesting raw stereo images can
+provide more robust geometric features than structured light sensors.  Shown
+below are three scenes from our validation data with the predictions being
+shown. 
+</p>
+
+<p>
+<figure class="figure">
+<img src="media/post1-image6.gif" class="figure-img img-fluid rounded w-75 mx-auto d-block" alt="validation images">
+<figcaption class="figure-caption">
+Images from our validation dataset with the predictions from the panoptic
+network overlaid. Top: Is 3D oriented bounding boxes for each object. <em>Note:
+Oriented bounding boxes can rotate freely along axes with similar dimensions.</em>
+Bottom: Wipeable surface segmentation where green is the surface and red is an
+object. Despite only being trained on low quality synthetic data, we are able
+to achieve robust transfer in a variety of home scenes. 
+</figcaption>
+</figure>
+</p>
+
+<h2>
+Current Limitations of Programmable Data
+</h2>
+
+<p>
+Programmable data seems like a very promising research direction, but does have
+potential limitations. The technique presented in this blog post relies heavily
+on geometric features extracted from stereo matching. The ability to infer
+geometry decays at distance, which means far away objects are difficult to
+detect. A promising solution to this problem, is to add more contextual
+information using advanced scene placement techniques, as in [8]. The other
+limitation to this approach, is that we are currently restricted to perception
+tasks. Ideally for robotic systems, we would want to also learn control
+policies in simulation that transfer. However, that will potentially require
+significant advances in contact modeling, which is an active focus at TRI.  
+</p>
+
+
+<h2>
+Broader Societal Impact
+</h2>
+
+<p>
+We are motivated to research programmable data because it can offer a solution
+to the issue of AI accessibility. Current solutions to high performance
+perception require a large amount of resources to annotate the datasets, such
+as an internal team or a costly third party contract. The amount of capital
+needed creates a significant barrier for people to implement and deploy state
+of the art algorithms. Programmable data offers a new paradigm where data can
+become as accessible as coding. In the future, we hope to release our
+simulator, <strong>SimNet</strong>, to further promote accessibility. We are currently
+conducting alpha testing within TRI. 
+</p>
+
+<h2>
+Acknowledgements
+</h2>
+
+<p>
+This research project was conducted by Michael Laskey and Kevin Stone. We thank
+Jeremy Ma for his help with collecting validation data in homes. We
+additionally thank Mark Tjersland and Krishna Shankar for their insights into
+learned stereo. We finally thank the ML and Manipulation teams at TRI for their
+insightful feedback along the way. 
+</p>
+
+<div class="small">
+<p class="fw-bold">References</p>
+<ol>
+<li>
+Tremblay, Jonathan, et al. "Training deep networks with synthetic data: Bridging the reality gap by domain randomization." Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition Workshops. 2018.
+</li>
+<li>
+Zhou, Xingyi, Dequan Wang, and Philipp Krähenbühl. "Objects as points." arXiv preprint arXiv:1904.07850 (2019).
+</li>
+<li>
+Mahler, Jeffrey, et al. "Dex-net 2.0: Deep learning to plan robust grasps with synthetic point clouds and analytic grasp metrics." arXiv preprint arXiv:1703.09312 (2017).
+</li>
+<li>
+Mayer, Nikolaus, et al. "A large dataset to train convolutional networks for disparity, optical flow, and scene flow estimation." Proceedings of the IEEE conference on computer vision and pattern recognition. 2016.
+</li>
+<li>
+Howard, Andrew G., et al. "Mobilenets: Efficient convolutional neural networks for mobile vision applications." arXiv preprint arXiv:1704.04861 (2017).
+</li>
+<li>
+Chang, A. X., Funkhouser, T., Guibas, L., Hanrahan, P., Huang, Q., Li, Z., ... & Yu, F. (2015). Shapenet: An information-rich 3d model repository. arXiv preprint arXiv:1512.03012.
+</li>
+<li>
+Geiger, Andreas, et al. "Vision meets robotics: The kitti dataset." The International Journal of Robotics Research 32.11 (2013): 1231-1237.
+</li>
+<li>
+Prakash, Aayush, et al. "Structured domain randomization: Bridging the reality gap by context-aware synthetic data." 2019 International Conference on Robotics and Automation (ICRA). IEEE, 2019
+</li>
+<li>
+Mayer, Nikolaus, et al. "What makes good synthetic training data for learning disparity and optical flow estimation?." International Journal of Computer Vision 126.9 (2018): 942-960.
+</li>
+<li>
+Xie, Christopher, et al. "The best of both modes: Separately leveraging rgb and depth for unseen object instance segmentation." Conference on robot learning. PMLR, 2020
+</li>
+<li>
+Bajracharya, Max, et al. "A mobile manipulation system for one-shot teaching of complex tasks in homes." 2020 IEEE International Conference on Robotics and Automation (ICRA). IEEE, 2020.
+</li>
+<ol>
+</div>
+
+</div>
+</div>
+</main>
+
+<footer class="custom-footer">
+<p>
+<a href="#">Back to top</a>
+</p>
+</footer>
+
+</body>
+</html>
